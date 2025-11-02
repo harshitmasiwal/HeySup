@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>HeySup - Random Video Chat</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <!-- Landing Page -->
+  <div id="landing" class="landing-page">
+    <div class="landing-content">
+      <h1>HeySup</h1>
+      <p>Meet new people instantly through random video chat</p>
+      <button id="startChatBtn" class="primary-btn">
+        <i class="fas fa-video"></i> Start Random Chat
+      </button>
+    </div>
+  </div>
+
+  <!-- Chat Room -->
+  <div id="chatRoom" class="chat-room hidden">
+    <div class="main-container">
+
+      <!-- LEFT SIDE : Stranger + You -->
+      <div class="left-section">
+        <div class="video-box">
+          <div class="video-wrapper">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div class="video-overlay">Stranger</div>
+            <div id="connectingOverlay" class="connecting-overlay">
+              <div class="spinner"></div>
+              <p>Finding someone interesting...</p>
+            </div>
+          </div>
+          <div class="video-wrapper">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <div class="video-overlay">You</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT SIDE : Chat + Controls -->
+      <div class="right-section">
+        <div class="chat-container">
+          <div id="messages" class="messages"></div>
+          <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type a message...">
+            <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="cameraBtn" class="control-btn">
+            <i class="fas fa-video"></i>
+          </button>
+          <button id="micBtn" class="control-btn">
+            <i class="fas fa-microphone"></i>
+          </button>
+          <button id="nextBtn" class="control-btn primary">
+            <i class="fas fa-forward"></i> Next
+          </button>
+          <button id="endBtn" class="control-btn danger">
+            <i class="fas fa-phone-slash"></i> End
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
