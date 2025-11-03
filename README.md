@@ -36,14 +36,15 @@ It lets users connect instantly with strangers for one-on-one video and text cha
 
 ## 🏗️ Project Structure
 
+```text
 HeySup/
 │
 ├── public/
-│ ├── index.html # Main UI page
-│ ├── style.css # Styling for desktop & mobile
-│ └── script.js # WebRTC and Socket.IO logic
+│   ├── index.html       # Main UI page
+│   ├── style.css        # Styling for desktop & mobile
+│   └── script.js        # WebRTC and Socket.IO logic
 │
-├── server.js # Express + Socket.IO backend
+├── server.js            # Express + Socket.IO backend
 ├── package.json
 └── README.md
 
