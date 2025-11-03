@@ -24,7 +24,7 @@ let isSearching = false;
 let currentPeerId = null;
 
 // Replace with your deployed Render server URL 👇
-const socket = io("https://heysup.onrender.com", {
+const socket = io("https://heysup-3f8q.onrender.com", {
   transports: ["websocket", "polling"],
 });
 
