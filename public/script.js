@@ -58,8 +58,13 @@ async function initializeApp() {
       return;
     }
 
+    // Detect device type
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
     localStream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 1280, height: 720 },
+      video: isMobile
+        ? { width: { ideal: 480 }, height: { ideal: 640 }, facingMode: "user" } // optimized for phone
+        : { width: { ideal: 1280 }, height: { ideal: 720 } }, // desktop
       audio: true
     });
 
