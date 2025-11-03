@@ -34,6 +34,8 @@ It lets users connect instantly with strangers for one-on-one video and text cha
 
 ---
 
+## 🏗️ Project Structure
+
 HeySup/
 │
 ├── public/
@@ -46,12 +48,4 @@ HeySup/
 └── README.md
 
 
-
-
-
-
-
-
-
-## 🏗️ Project Structure
 
