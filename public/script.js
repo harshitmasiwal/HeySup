@@ -1,8 +1,4 @@
-// ============================
-// HeySup - Random Video Chat
-// ============================
 
-// DOM Elements
 const landingPage = document.getElementById('landing');
 const chatRoom = document.getElementById('chatRoom');
 const localVideo = document.getElementById('localVideo');
@@ -17,28 +13,32 @@ const sendBtn = document.getElementById('sendBtn');
 const messagesDiv = document.getElementById('messages');
 const connectingOverlay = document.getElementById('connectingOverlay');
 
-// WebRTC Variables
 let localStream = null;
 let pc = null;
 let isSearching = false;
 let currentPeerId = null;
 
-// Replace with your deployed Render server URL 👇
-const socket = io("https://heysup-3f8q.onrender.com", {
-  transports: ["websocket", "polling"],
-});
+let dynamicIceServers = null;
 
-// Twilio ICE servers configuration
-const iceServers = [
-  { urls: 'stun:global.stun.twilio.com:3478' },
-  { 
-    urls: 'turn:global.turn.twilio.com:3478?transport=udp',
-    username: '5ea6d696748f1875872562aa6e0b7e534240e3662dab9d48099202ef0f19713a',  
-    credential: 'nq/DSit0QUiCf9r/O1reHvMHlwC9BBrOXsOJEoLV/ak=' 
+async function getIceServers() {
+  try {
+    // fetch from same server (no need for localhost:5000 if same domain)
+    const response = await fetch('/turn-credentials');
+    const iceServers = await response.json();
+    console.log("Fetched ICE servers:", iceServers);
+    dynamicIceServers = iceServers;
+    return iceServers;
+  } catch (err) {
+    console.error("Failed to fetch TURN credentials, using fallback STUN:", err);
+    // fallback to basic STUN if fetch fails
+    return [{ urls: 'stun:stun.l.google.com:19302' }];
   }
-];
+}
 
-// Socket event listeners
+
+const socket = io.connect(window.location.origin);
+
+
 socket.on('matched', handleMatch);
 socket.on('offer', handleIncomingOffer);
 socket.on('answer', handleAnswer);
@@ -46,48 +46,45 @@ socket.on('candidate', handleCandidate);
 socket.on('chat-message', handleChatMessage);
 socket.on('peer-left', handlePeerLeft);
 
-// ============================
-// Main Functions
-// ============================
-
-// Start camera and microphone
 async function initializeApp() {
   try {
-    if (location.protocol !== "https:") {
-      alert("Please open this site with HTTPS for camera/mic access!");
-      return;
-    }
-
-    // Detect device type
-    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-
     localStream = await navigator.mediaDevices.getUserMedia({
-      video: isMobile
-        ? { width: { ideal: 480 }, height: { ideal: 640 }, facingMode: "user" } // optimized for phone
-        : { width: { ideal: 1280 }, height: { ideal: 720 } }, // desktop
-      audio: true
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: 'user'
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
     });
 
     localVideo.srcObject = localStream;
-    localVideo.muted = true;
-    await localVideo.play().catch(() => {});
 
     chatRoom.classList.remove('hidden');
     landingPage.classList.add('hidden');
-    startSearching();
+    document.body.style.overflow = 'hidden';
 
+    setInitialLayout();
+    startSearching();
   } catch (err) {
-    console.error("Camera error:", err);
-    alert("Could not access camera/microphone. Please check permissions.");
+    console.error("Camera/microphone error:", err);
+    alert("Could not access camera or microphone. Please check permissions and try again.");
   }
 }
 
-// Start searching for a peer
 function startSearching() {
   if (pc) {
-    pc.close();
+    try {
+      pc.close();
+    } catch (e) {
+      console.error('Error closing peer connection:', e);
+    }
     pc = null;
   }
+
   remoteVideo.srcObject = null;
   currentPeerId = null;
   connectingOverlay.style.display = 'flex';
@@ -95,27 +92,37 @@ function startSearching() {
   socket.emit('find-match');
 }
 
-// Handle match found
-function handleMatch(peerId) {
+async function handleMatch(peerId) {
   currentPeerId = peerId;
   isSearching = false;
 
+  const iceServers = dynamicIceServers || await getIceServers();
   pc = new RTCPeerConnection({ iceServers });
 
-  localStream.getTracks().forEach(track => {
-    pc.addTrack(track, localStream);
-  });
+  if (localStream) {
+    localStream.getTracks().forEach(track => {
+      try {
+        pc.addTrack(track, localStream);
+      } catch (e) {
+        console.error('Error adding track:', e);
+      }
+    });
+  }
 
   pc.ontrack = event => {
-    remoteVideo.srcObject = event.streams[0];
-    connectingOverlay.style.display = 'none';
+    if (event.streams && event.streams[0]) {
+      remoteVideo.srcObject = event.streams[0];
+      connectingOverlay.style.display = 'none';
+      setInitialLayout();
+    }
   };
 
   pc.onicecandidate = ({ candidate }) => {
-    if (candidate) socket.emit('candidate', { candidate, peerId: currentPeerId });
+    if (candidate) {
+      socket.emit('candidate', { candidate, peerId: currentPeerId });
+    }
   };
 
-  // Initiator creates offer
   if (peerId > socket.id) {
     pc.createOffer()
       .then(offer => pc.setLocalDescription(offer))
@@ -126,116 +133,159 @@ function handleMatch(peerId) {
   }
 }
 
-// Handle incoming offer
 async function handleIncomingOffer({ offer, peerId }) {
   currentPeerId = peerId;
 
   if (!pc) {
+    const iceServers = dynamicIceServers || await getIceServers();
     pc = new RTCPeerConnection({ iceServers });
 
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        try {
+          pc.addTrack(track, localStream);
+        } catch (e) {
+          console.error('Error adding track:', e);
+        }
+      });
+    }
 
     pc.ontrack = event => {
-      remoteVideo.srcObject = event.streams[0];
-      connectingOverlay.style.display = 'none';
+      if (event.streams && event.streams[0]) {
+        remoteVideo.srcObject = event.streams[0];
+        connectingOverlay.style.display = 'none';
+        setInitialLayout();
+      }
     };
 
     pc.onicecandidate = ({ candidate }) => {
-      if (candidate) socket.emit('candidate', { candidate, peerId: currentPeerId });
+      if (candidate) {
+        socket.emit('candidate', { candidate, peerId: currentPeerId });
+      }
     };
   }
 
-  await pc.setRemoteDescription(offer);
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  socket.emit('answer', { answer, peerId: currentPeerId });
+  try {
+    await pc.setRemoteDescription(offer);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('answer', { answer, peerId: currentPeerId });
+  } catch (err) {
+    console.error("handleIncomingOffer error:", err);
+  }
 }
 
-// Handle answer to our offer
 async function handleAnswer({ answer, peerId }) {
   if (peerId === currentPeerId && pc) {
-    await pc.setRemoteDescription(answer);
+    try {
+      await pc.setRemoteDescription(answer);
+    } catch (e) {
+      console.error('Error setting remote description:', e);
+    }
   }
 }
 
-// Handle ICE candidate
 function handleCandidate({ candidate, peerId }) {
   if (peerId === currentPeerId && pc) {
-    pc.addIceCandidate(candidate);
+    try {
+      pc.addIceCandidate(candidate);
+    } catch (e) {
+      console.warn("addIceCandidate error", e);
+    }
   }
 }
 
-// Handle chat messages
 function handleChatMessage(message) {
   addMessageToChat(message, false);
 }
 
-// Handle peer leaving
 function handlePeerLeft() {
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-  remoteVideo.srcObject = null;
-  connectingOverlay.style.display = 'flex';
+  addSystemMessage('Stranger disconnected');
   startSearching();
 }
 
-// Add message to chat
 function addMessageToChat(message, isSent) {
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
   messageDiv.textContent = message;
   messagesDiv.appendChild(messageDiv);
-  setTimeout(() => {
-    messagesDiv.scrollTo({ top: messagesDiv.scrollHeight, behavior: 'smooth' });
-  }, 100);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// ============================
-// UI Event Listeners
-// ============================
-startChatBtn.onclick = initializeApp;
+function addSystemMessage(text) {
+  const messageDiv = document.createElement('div');
+  messageDiv.style.textAlign = 'center';
+  messageDiv.style.color = '#64748b';
+  messageDiv.style.fontSize = '0.85rem';
+  messageDiv.style.padding = '8px';
+  messageDiv.textContent = text;
+  messagesDiv.appendChild(messageDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
 
+startChatBtn.onclick = initializeApp;
 nextBtn.onclick = () => {
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-  socket.emit('leave-chat');
+  messagesDiv.innerHTML = '';
   startSearching();
 };
 
 endBtn.onclick = () => {
   if (pc) {
-    pc.close();
+    try { pc.close(); } catch (e) {}
     pc = null;
   }
+
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+
   socket.emit('leave-chat');
   landingPage.classList.remove('hidden');
   chatRoom.classList.add('hidden');
   messagesDiv.innerHTML = '';
+  document.body.style.overflow = '';
 };
 
-// Camera toggle
 cameraBtn.onclick = () => {
+  if (!localStream) return;
   const videoTrack = localStream.getVideoTracks()[0];
+  if (!videoTrack) return;
+
   videoTrack.enabled = !videoTrack.enabled;
-  cameraBtn.innerHTML = videoTrack.enabled ? 
-    '<i class="fas fa-video"></i>' : 
+  cameraBtn.innerHTML = videoTrack.enabled ?
+    '<i class="fas fa-video"></i>' :
     '<i class="fas fa-video-slash"></i>';
+
+  if (!videoTrack.enabled) {
+    cameraBtn.style.background = 'rgba(239, 68, 68, 0.3)';
+    cameraBtn.style.borderColor = '#ef4444';
+  } else {
+    cameraBtn.style.background = '';
+    cameraBtn.style.borderColor = '';
+  }
 };
 
-// Mic toggle
 micBtn.onclick = () => {
+  if (!localStream) return;
   const audioTrack = localStream.getAudioTracks()[0];
+  if (!audioTrack) return;
+
   audioTrack.enabled = !audioTrack.enabled;
-  micBtn.innerHTML = audioTrack.enabled ? 
-    '<i class="fas fa-microphone"></i>' : 
+  micBtn.innerHTML = audioTrack.enabled ?
+    '<i class="fas fa-microphone"></i>' :
     '<i class="fas fa-microphone-slash"></i>';
+
+  if (!audioTrack.enabled) {
+    micBtn.style.background = 'rgba(239, 68, 68, 0.3)';
+    micBtn.style.borderColor = '#ef4444';
+  } else {
+    micBtn.style.background = '';
+    micBtn.style.borderColor = '';
+  }
 };
 
-// Send message
 sendBtn.onclick = () => {
   const message = messageInput.value.trim();
   if (message && currentPeerId) {
@@ -252,8 +302,57 @@ messageInput.onkeypress = (e) => {
   }
 };
 
-// Disconnect cleanly when user leaves page
 window.onbeforeunload = () => {
-  socket.disconnect();
-  if (pc) pc.close();
+  try {
+    socket.disconnect();
+  } catch (e) {}
+
+  if (pc) {
+    try { pc.close(); } catch (e) {}
+  }
+
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+  }
 };
+
+let isLocalBig = false;
+
+function setInitialLayout() {
+  if (window.innerWidth > 1200) {
+    localVideo.parentElement.classList.remove('small');
+    remoteVideo.parentElement.classList.remove('small');
+    return;
+  }
+
+  isLocalBig = false;
+  localVideo.parentElement.classList.add('small');
+  remoteVideo.parentElement.classList.remove('small');
+}
+
+function swapVideos() {
+  if (window.innerWidth > 1200) return;
+
+  isLocalBig = !isLocalBig;
+
+  if (isLocalBig) {
+    localVideo.parentElement.classList.remove('small');
+    remoteVideo.parentElement.classList.add('small');
+  } else {
+    remoteVideo.parentElement.classList.remove('small');
+    localVideo.parentElement.classList.add('small');
+  }
+}
+
+if (localVideo) localVideo.addEventListener('click', swapVideos);
+if (remoteVideo) remoteVideo.addEventListener('click', swapVideos);
+
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(setInitialLayout, 150);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  setInitialLayout();
+});

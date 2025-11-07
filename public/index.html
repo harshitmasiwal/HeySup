@@ -1,70 +1,97 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>HeySup - Random Video Chat</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Landing Page -->
   <div id="landing" class="landing-page">
     <div class="landing-content">
+      <div class="logo-container">
+        <i class="fas fa-video-slash logo-icon"></i>
+      </div>
       <h1>HeySup</h1>
       <p>Meet new people instantly through random video chat</p>
       <button id="startChatBtn" class="primary-btn">
         <i class="fas fa-video"></i> Start Random Chat
       </button>
+      <div class="features">
+        <div class="feature">
+          <i class="fas fa-shield-alt"></i>
+          <span>Anonymous & Safe</span>
+        </div>
+        <div class="feature">
+          <i class="fas fa-globe"></i>
+          <span>Global Connections</span>
+        </div>
+        <div class="feature">
+          <i class="fas fa-bolt"></i>
+          <span>Instant Matching</span>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Chat Room -->
   <div id="chatRoom" class="chat-room hidden">
     <div class="main-container">
-
-      <!-- LEFT SIDE : Stranger + You -->
       <div class="left-section">
         <div class="video-box">
           <div class="video-wrapper">
             <video id="remoteVideo" autoplay playsinline></video>
-            <div class="video-overlay">Stranger</div>
+            <div class="video-overlay stranger-label">
+              <i class="fas fa-user"></i> Stranger
+            </div>
             <div id="connectingOverlay" class="connecting-overlay">
               <div class="spinner"></div>
               <p>Finding someone interesting...</p>
             </div>
           </div>
+
           <div class="video-wrapper">
             <video id="localVideo" autoplay muted playsinline></video>
-            <div class="video-overlay">You</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT SIDE : Chat + Controls -->
-      <div class="right-section">
-        <div class="chat-container">
-          <div id="messages" class="messages"></div>
-          <div class="chat-input">
-            <input type="text" id="messageInput" placeholder="Type a message...">
-            <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+            <div class="video-overlay you-label">
+              <i class="fas fa-user-circle"></i> You
+            </div>
           </div>
         </div>
 
         <div class="controls">
-          <button id="cameraBtn" class="control-btn">
+          <button id="cameraBtn" class="control-btn" title="Toggle Camera">
             <i class="fas fa-video"></i>
           </button>
-          <button id="micBtn" class="control-btn">
+          <button id="micBtn" class="control-btn" title="Toggle Microphone">
             <i class="fas fa-microphone"></i>
           </button>
-          <button id="nextBtn" class="control-btn primary">
-            <i class="fas fa-forward"></i> Next
+          <button id="nextBtn" class="control-btn next-btn" title="Next Person">
+            <i class="fas fa-forward"></i>
           </button>
-          <button id="endBtn" class="control-btn danger">
-            <i class="fas fa-phone-slash"></i> End
+          <button id="endBtn" class="control-btn end-btn" title="End Chat">
+            <i class="fas fa-phone-slash"></i>
           </button>
         </div>
       </div>
 
+      <div class="right-section">
+        <div class="chat-container">
+          <div class="chat-header">
+            <i class="fas fa-comments"></i>
+            <span>Chat Messages</span>
+          </div>
+          <div id="messages" class="messages"></div>
+          <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type a message..." maxlength="500">
+            <button id="sendBtn" title="Send Message">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
