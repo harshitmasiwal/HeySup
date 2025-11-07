@@ -49,4 +49,6 @@ HeySup/
 └── README.md
 
 
+Copyright Harshit 2025
+
 
